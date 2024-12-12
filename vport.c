@@ -97,6 +97,7 @@ int main(int argc,const char *argv[])
     
 
     // open connection
+    printf("total peers %d\n", total_peers);
     for(int i = 0; i < 3; i++){
         pingAll(sockfd, peers, total_peers);
     }

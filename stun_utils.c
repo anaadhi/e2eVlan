@@ -19,10 +19,22 @@ int parse_2d_array(const char* str, struct sockaddr_in* result_array){
             continue;
         }
         else if(mode == 2 && curr == ']'){
-            cnt++;
+            
             port[portlen++] = '\0';
             printf("got ip address %s\n", ip);
             printf("got port %d\n", atoi(port));
+
+            // make ip address
+            memset(&result_array[cnt], 0, sizeof(struct sockaddr_in));
+            result_array[cnt].sin_family = AF_INET;
+            if (inet_pton(AF_INET, ip, &result_array[cnt].sin_addr) != 1) {
+                fprintf(stderr, "Invalid IP address format: %s\n", ip);
+                return -1;
+            }
+            result_array[cnt].sin_port = htons(atoi(port));
+
+
+            cnt++;
             iplen = 0;
             portlen = 0;
             mode = 0;
@@ -41,9 +53,14 @@ int parse_2d_array(const char* str, struct sockaddr_in* result_array){
 }
 
 void pingAll(int sockfd, struct sockaddr_in* peers, int npeers){
-    const char data[1] = "";
+    const char data[5] = "ping";
     for(int i = 0; i < npeers;i++){
-        sendto(sockfd, data, sizeof(data), 0, (const struct sockaddr *)&peers[i], sizeof(peers[i]));
+        ssize_t sentsz = sendto(sockfd, data, sizeof(data), 0, (const struct sockaddr *)&peers[i], sizeof(peers[i]));
+        if (sentsz < 0) {
+            perror("sendto");
+        } else {
+            printf("Pinged %s:%d\n", inet_ntoa(peers[i].sin_addr), ntohs(peers[i].sin_port));
+        }
         sleep(0.1);
     }
 }
@@ -91,7 +108,7 @@ int stun_init(char* stun_server_ip, int stun_server_port, char* result){
 
 
     int addrlen = sizeof(server_addr);
-    int recvsz = recvfrom(sockfd, result, sizeof(result), 0, (struct sockaddr *)&server_addr, &addrlen);
+    int recvsz = recvfrom(sockfd, result, sizeof(char) * 100, 0, (struct sockaddr *)&server_addr, &addrlen);
 
     printf("received %s\n", result);
     
